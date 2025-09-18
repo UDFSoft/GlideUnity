@@ -1,5 +1,5 @@
 /*
- *    Copyright 2025 UDF Owner
+ *    Copyright 2025 UDFOwner
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
  *    More details: https://udfsoft.com/
  */
  
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -29,6 +30,10 @@ public class GlideRequestBuilder
     private Texture2D _errorImage;
     private readonly Dictionary<string, string> _headers = new();
     private RawImage _target;
+
+    private Action<Exception> errorCallback;
+
+    private Action successCallback;
 
     public GlideRequestBuilder(MonoBehaviour context)
     {
@@ -73,13 +78,19 @@ public class GlideRequestBuilder
     {
         _target = target;
         var request = BuildRequest();
-        GlideLoader.Instance.Load(request, _context);
+        GlideLoader.Instance
+            .SetErrorCallback(errorCallback)
+            .SetSuccessCallback(successCallback)
+            .Load(request, _context);
     }
 
     public void Into(Image target)
     {
         var request = BuildRequest();
-        GlideLoader.Instance.Load(request, _context, target);
+        GlideLoader.Instance
+            .SetErrorCallback(errorCallback)
+            .SetSuccessCallback(successCallback)
+            .Load(request, _context, target);
     }
 
     private ImageRequest BuildRequest()
@@ -98,4 +109,23 @@ public class GlideRequestBuilder
 
         return request;
     }
+
+    public GlideRequestBuilder SetErrorCallback(Action<Exception> callback)
+    {
+        errorCallback = callback;
+
+        return this;
+    }
+
+    public GlideRequestBuilder SetSuccessCallback(Action callback)
+    {
+        successCallback = callback;
+        return this;
+    }
+
+    // public GlideRequestBuilder SetCertificateHandler(CertificateHandler handler)
+    // {
+
+    //     return this;
+    // }
 }

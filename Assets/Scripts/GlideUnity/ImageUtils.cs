@@ -16,10 +16,18 @@
  *    More details: https://udfsoft.com/
  */
  
-public enum ImageSourceType
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Assets.Libs.Glide.Scripts
 {
-    None,
-    Url,
-    File,
-    Resources
+    public class ImageUtils
+    {
+
+        public static void SetSpriteSafe(Image image, Sprite sprite)
+        {
+            if (image != null)
+                image.sprite = sprite;
+        }
+    }
 }

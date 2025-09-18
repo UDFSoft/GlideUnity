@@ -1,5 +1,5 @@
 /*
- *    Copyright 2025 UDF Owner
+ *    Copyright 2025 UDFOwner
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -27,13 +27,13 @@ public static class ImageCache
     private static readonly Dictionary<string, Texture2D> _memoryCache = new();
     private static readonly LinkedList<string> _lruList = new();
 
-    private static string DiskCachePath => Application.persistentDataPath + "/image_cache/";
+    private static string _DiskCachePath => Application.persistentDataPath + "/image_cache/";
 
-    static ImageCache()
-    {
-        if (!System.IO.Directory.Exists(DiskCachePath))
-            System.IO.Directory.CreateDirectory(DiskCachePath);
-    }
+    // static ImageCache()
+    // {
+    //     if (!System.IO.Directory.Exists(DiskCachePath))
+    //         System.IO.Directory.CreateDirectory(DiskCachePath);
+    // }
 
     public static bool TryGet(string key, out Texture2D tex)
     {
@@ -46,7 +46,7 @@ public static class ImageCache
         }
 
         // Попробуем с диска
-        string filePath = DiskCachePath + HashKey(key) + ".png";
+        string filePath = GetDiskCachePath() + HashKey(key) + ".png";
         if (System.IO.File.Exists(filePath))
         {
             byte[] data = System.IO.File.ReadAllBytes(filePath);
@@ -84,16 +84,47 @@ public static class ImageCache
                 _lruList.RemoveLast();
 
                 if (_memoryCache.TryGetValue(oldestKey, out Texture2D toRemove))
-                    Object.Destroy(toRemove); // Важно!
+                {
+                    Debug.Log("Remove old texture: " + oldestKey);
+
+                    if (oldestKey.StartsWith("http") || oldestKey.StartsWith("https") ||
+                    oldestKey.StartsWith("/") || oldestKey.Contains(":\\"))
+                    {
+                        // remove only file or web resource
+                        Object.Destroy(toRemove);
+                    }
+                }
 
                 _memoryCache.Remove(oldestKey);
             }
         }
 
         // Сохраняем на диск
-        string filePath = DiskCachePath + HashKey(key) + ".png";
+        string filePath = GetDiskCachePath() + HashKey(key) + ".png";
+
+        if (!tex.isReadable)
+            tex = MakeReadableCopy(tex);
+
         byte[] bytes = tex.EncodeToPNG();
         System.IO.File.WriteAllBytes(filePath, bytes);
+    }
+
+    private static Texture2D MakeReadableCopy(Texture2D tex)
+    {
+        RenderTexture rt = RenderTexture.GetTemporary(tex.width, tex.height, 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
+        Graphics.Blit(tex, rt);
+
+        RenderTexture previous = RenderTexture.active;
+        RenderTexture.active = rt;
+
+        Texture2D readableTex = new(tex.width, tex.height, TextureFormat.RGBA32, false);
+        readableTex.ReadPixels(new Rect(0, 0, tex.width, tex.height), 0, 0);
+        readableTex.Apply();
+
+        RenderTexture.active = previous;
+        RenderTexture.ReleaseTemporary(rt);
+
+        return readableTex;
     }
 
     private static string HashKey(string input)
@@ -113,8 +144,15 @@ public static class ImageCache
 
     public static void ClearDisk()
     {
-        if (System.IO.Directory.Exists(DiskCachePath))
-            System.IO.Directory.Delete(DiskCachePath, true);
-        System.IO.Directory.CreateDirectory(DiskCachePath);
+        if (System.IO.Directory.Exists(_DiskCachePath))
+            System.IO.Directory.Delete(_DiskCachePath, true);
+        System.IO.Directory.CreateDirectory(_DiskCachePath);
+    }
+
+    private static string GetDiskCachePath()
+    {
+        if (!System.IO.Directory.Exists(_DiskCachePath))
+            System.IO.Directory.CreateDirectory(_DiskCachePath);
+        return _DiskCachePath;
     }
 }
