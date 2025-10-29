@@ -15,7 +15,7 @@
  *
  *    More details: https://udfsoft.com/
  */
- 
+
 using System;
 using System.Collections;
 using Assets.Libs.Glide.Scripts;
@@ -206,6 +206,68 @@ public class GlideLoader : MonoBehaviour
         {
             //     uiImage.sprite = SpriteFromTexture(request.ErrorImage);
             ImageUtils.SetSpriteSafe(uiImage, SpriteFromTexture(request.ErrorImage));
+        }
+    }
+
+    public void Load(ImageRequest request, MonoBehaviour context, Action<Sprite> onLoaded)
+    {
+        if (request == null)
+            return;
+
+        if (string.IsNullOrEmpty(request.Path) || request.SourceType == ImageSourceType.None)
+            return;
+
+        if (ImageCache.TryGet(request.Path, out var cached))
+        {
+            successCallback?.Invoke();
+            onLoaded?.Invoke(SpriteFromTexture(cached));
+            return;
+        }
+
+        StartCoroutineSafe(context, LoadRoutine(request, onLoaded));
+    }
+
+    private IEnumerator LoadRoutine(ImageRequest request, Action<Sprite> onLoaded)
+    {
+        Texture2D result = null;
+
+        switch (request.SourceType)
+        {
+            case ImageSourceType.Url:
+                UnityWebRequest uwr = UnityWebRequestTexture.GetTexture(request.Path);
+                uwr.certificateHandler = NetworkFactory.GetCertificateHandler();
+                foreach (var h in request.Headers)
+                    uwr.SetRequestHeader(h.Key, h.Value);
+                yield return uwr.SendWebRequest();
+                if (uwr.result == UnityWebRequest.Result.Success)
+                {
+                    successCallback?.Invoke();
+                    result = DownloadHandlerTexture.GetContent(uwr);
+                }
+                else
+                    errorCallback?.Invoke(new Exception(uwr.error));
+                break;
+
+            case ImageSourceType.File:
+                UnityWebRequest fwr = UnityWebRequestTexture.GetTexture("file://" + request.Path);
+                yield return fwr.SendWebRequest();
+                if (fwr.result == UnityWebRequest.Result.Success)
+                    result = DownloadHandlerTexture.GetContent(fwr);
+                break;
+
+            case ImageSourceType.Resources:
+                result = Resources.Load<Texture2D>(request.Path);
+                break;
+        }
+
+        if (result != null)
+        {
+            ImageCache.Store(request.Path, result);
+            onLoaded?.Invoke(SpriteFromTexture(result));
+        }
+        else
+        {
+            errorCallback?.Invoke(new Exception("Failed to load sprite from " + request.Path));
         }
     }
 

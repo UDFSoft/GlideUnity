@@ -93,6 +93,15 @@ public class GlideRequestBuilder
             .Load(request, _context, target);
     }
 
+    public void Into(Action<Sprite> onSpriteLoaded)
+    {
+        var request = BuildRequest();
+        GlideLoader.Instance
+            .SetErrorCallback(errorCallback)
+            .SetSuccessCallback(successCallback)
+            .Load(request, _context, onSpriteLoaded);
+    }
+
     private ImageRequest BuildRequest()
     {
         var request = new ImageRequest()

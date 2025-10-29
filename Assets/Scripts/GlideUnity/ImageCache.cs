@@ -15,7 +15,7 @@
  *
  *    More details: https://udfsoft.com/
  */
- 
+
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -64,6 +64,8 @@ public static class ImageCache
 
     public static void Store(string key, Texture2D tex)
     {
+        if (tex == null) return;
+
         // Если уже есть — обновляем и поднимаем в начало
         if (_memoryCache.ContainsKey(key))
         {
@@ -83,17 +85,17 @@ public static class ImageCache
                 string oldestKey = _lruList.Last.Value;
                 _lruList.RemoveLast();
 
-                if (_memoryCache.TryGetValue(oldestKey, out Texture2D toRemove))
-                {
-                    Debug.Log("Remove old texture: " + oldestKey);
+                // if (_memoryCache.TryGetValue(oldestKey, out Texture2D toRemove))
+                // {
+                //     Debug.Log("Remove old texture: " + oldestKey);
 
-                    if (oldestKey.StartsWith("http") || oldestKey.StartsWith("https") ||
-                    oldestKey.StartsWith("/") || oldestKey.Contains(":\\"))
-                    {
-                        // remove only file or web resource
-                        Object.Destroy(toRemove);
-                    }
-                }
+                //     if (oldestKey.StartsWith("http") || oldestKey.StartsWith("https") ||
+                //     oldestKey.StartsWith("/") || oldestKey.Contains(":\\"))
+                //     {
+                //         // remove only file or web resource
+                //         Object.Destroy(toRemove);
+                //     }
+                // }
 
                 _memoryCache.Remove(oldestKey);
             }
